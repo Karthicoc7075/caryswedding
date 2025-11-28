@@ -1,5 +1,5 @@
 import React,{useState,useEffect, useRef } from 'react'
-import { motion } from 'framer-motion'
+import { motion,AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 
 
@@ -64,8 +64,11 @@ function projects() {
                 className="flex mt-14 gap-4 overflow-x-auto scroll-smooth scrollbar-hide snap-x snap-mandatory"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-                {projects.map((project) => (
-                    <div
+                {projects.map((project,index) => (
+                    <motion.div
+                         initial={{ opacity: 0, scale: 0.8 }}
+                          whileInView={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.4, delay: index * 0.2 }}
                         key={project.id}
                         className="relative bg-white rounded-2xl shadow-md overflow-hidden flex-shrink-0 w-60 snap-start"
                         onClick={() => {
@@ -88,7 +91,7 @@ function projects() {
                             </h3>
                             <h4 className="text-gray-300 text-sm font-bold ">{project.images.length} Photos</h4>
                         </div>
-                    </div>
+                    </motion.div>
                 ))}
             </div>
 
@@ -108,6 +111,8 @@ function projects() {
                 }
             `}</style>
         </div>  
+
+        <AnimatePresence>
                 {
         modelOpen && selectedProject && (
 
@@ -115,20 +120,37 @@ function projects() {
       <div className="fixed inset-0 bg-black/50 z-[1001]"></div>
       
       <div className="fixed inset-0 flex items-center justify-center z-[1002] p-4">
-        <div className="relative bg-white rounded-lg shadow-lg w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden">
+        <motion.div
+         initial={{ opacity: 0, scale: .8 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+         exit={{ opacity: 0, scale: 0.8 }}
+        transition={{ duration: 0.6,  }}
+        className="relative bg-white rounded-lg shadow-lg w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden">
           
 
           <div className='flex justify-between items-center p-4 md:p-6 border-b-2 flex-shrink-0 min-w-0'>
             <div className='flex flex-col font-montserrat'>
-              <h3 className="text-xl font-bold text-black">
+              <motion.h3 
+                initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6,delay: .8 }}
+              className="text-xl font-bold text-black">
                 {selectedProject.title}
-              </h3>
-              <h4 className="text-gray-500 text-md font-bold">
+              </motion.h3>
+              <motion.h4
+              
+                initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6,delay: 1 }}
+              className="text-gray-500 text-md font-bold">
                 {selectedProject.images.length} Photos
-              </h4>
+              </motion.h4>
             </div>
            
-            <button
+            <motion.button
+                initial={{ opacity: 0, scale: 0.8  }}
+                whileInView={{ opacity: 1, scale: 1  }}
+                transition={{ duration: 0.4, delay: 1 }}
               className="text-gray-600 hover:text-gray-800 flex-shrink-0 ml-4"
               aria-label="Close modal"
                 onClick={() => { setModelOpen(false); setSelectedProject(null); }}
@@ -136,14 +158,17 @@ function projects() {
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
-            </button>
+            </motion.button>
           </div>
 
           <div className="overflow-y-auto flex-1 min-w-0">
             <div className="p-4 md:p-6">
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
                 {selectedProject.images.map((imageUrl, index) => (
-                  <div 
+                  <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        whileInView={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.4, delay: 1 + index * 0.1 }}
                     key={index} 
                     className="relative w-full aspect-square shadow-md rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
                     onClick={() => setFullscreenImage({ url: imageUrl, index })}
@@ -154,13 +179,13 @@ function projects() {
                       fill
                       className="object-cover"
                     />
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             </div>
           </div>
           
-        </div>
+        </motion.div>
       </div>
 
 
@@ -215,7 +240,12 @@ function projects() {
           </div>
 
         
-          <div className="relative w-full h-full p-8 flex items-center justify-center">
+          <motion.div 
+              initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.6,  }}
+          className="relative w-full h-full p-8 flex items-center justify-center">
             <Image
               src={fullscreenImage.url}
               alt={`Fullscreen Image ${fullscreenImage.index + 1}`}
@@ -223,13 +253,13 @@ function projects() {
               className="object-contain"
               priority
             />
-          </div>
+          </motion.div>
         </div>
       )}
     </>
         )
     }
-
+</AnimatePresence>
     </section>
   )
 }
