@@ -2,25 +2,27 @@ import fs from "fs/promises";
 import path from "path";
 import cloudinary from '../../lib/cloundinary';
 import multer from "multer";
+import { kv } from '@vercel/kv';
 
 const DATA_FILE = path.join(process.cwd(), "data", "workData.json");
 
 const upload = multer({ storage: multer.memoryStorage() });
 
 export default async function handler(req, res) {
-    // Apply multer middleware manually
-    await new Promise((resolve, reject) => {
+      await new Promise((resolve, reject) => {
         upload.array("images")(req, res, (err) => {
             if (err) reject(err);
             else resolve();
         });
-    });
+    }); 
 
     if (req.method === "GET") {
         try {
             const data = await fs.readFile(DATA_FILE, "utf-8");
             const works = JSON.parse(data).works;
-            res.status(200).json({ works });
+
+            const activeWorks = works.filter(work => work.status === 'active');
+            res.status(200).json({ works: activeWorks });
         } catch (error) {
             console.error("Error reading data:", error);
             res.status(500).json({ error: "Failed to read data" });
@@ -66,14 +68,14 @@ export default async function handler(req, res) {
 
             let works = [];
             try {
-                const data = await fs.readFile(DATA_FILE, "utf-8");
+                const data = await kv.get(DATA_FILE);
                 works = JSON.parse(data).works || [];
             } catch (error) {
                 works = [];
             }
 
             works.push(newWork);
-            await fs.writeFile(DATA_FILE, JSON.stringify({ works }, null, 2));
+            await kv.set(DATA_FILE, JSON.stringify({ works }, null, 2));
 
             res.status(201).json({ message: "Work added", work: newWork });
         } catch (error) {
@@ -86,7 +88,7 @@ export default async function handler(req, res) {
             const { id, title, description, status ,deleteImages} = req.body;
             let works = [];
        
-            const data = await fs.readFile(DATA_FILE, "utf-8");
+            const data = await kv.get(DATA_FILE);
             works = JSON.parse(data).works || [];
             
             const workIndex = works.findIndex((work) => work.id === parseInt(id));
@@ -152,7 +154,7 @@ export default async function handler(req, res) {
             works[workIndex].description = description;
             works[workIndex].status = status;
 
-            await fs.writeFile(DATA_FILE, JSON.stringify({ works }, null, 2));
+            await kv.set(DATA_FILE, JSON.stringify({ works }, null, 2));
             
             res.status(200).json({ message: "Work updated", work: works[workIndex] });
         }
@@ -166,7 +168,7 @@ export default async function handler(req, res) {
     else if (req.method === "DELETE") {
         try {
             const { id } = req.query;
-            const data = await fs.readFile(DATA_FILE, "utf-8");
+            const data = await kv.get(DATA_FILE);
             let works = JSON.parse(data).works || [];
             
             const imageUrlsToDelete = works
@@ -203,7 +205,7 @@ export default async function handler(req, res) {
             works = works.filter((work) => work.id !== parseInt(id));
 
             // Save the updated works
-            await fs.writeFile(DATA_FILE, JSON.stringify({ works }, null, 2));
+            await kv.set(DATA_FILE, JSON.stringify({ works }, null, 2));
 
             res.status(200).json({ 
                 message: "Work deleted", 

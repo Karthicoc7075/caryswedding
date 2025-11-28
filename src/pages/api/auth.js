@@ -2,10 +2,11 @@ const jsonwebtoken = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const fs = require('fs');
 const path = require('path');
+import { kv } from '@vercel/kv';
 
 const AUTH_FILE = path.join(process.cwd(), "data", "auth.json"); 
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
 
     if (req.method === 'POST') {
         const { username, password } = req.body;
@@ -16,7 +17,7 @@ export default function handler(req, res) {
         }
 
         try {
-            const authData = fs.readFileSync(AUTH_FILE, 'utf-8');
+            const authData = await kv.get(AUTH_FILE);
             const users = JSON.parse(authData).user;
 
             const findUser = users.find(u => u.username == username);
@@ -64,7 +65,7 @@ export default function handler(req, res) {
 
         try {
             
-            const authData = fs.readFileSync(AUTH_FILE, 'utf-8');
+            const authData = await kv.get(AUTH_FILE);
             const users = JSON.parse(authData).user;
 
             const user = users.find(u => u.username === username)
@@ -82,7 +83,7 @@ export default function handler(req, res) {
             
             const updatedUsers = users.map(u => u.username === username ? newUserData : u);
 
-            fs.writeFileSync(AUTH_FILE, JSON.stringify({ user: updatedUsers }, null, 2));
+            await kv.set(AUTH_FILE, JSON.stringify({ user: updatedUsers }, null, 2));
 
             res.status(200).json({ message: 'Password updated successfully' });
 
