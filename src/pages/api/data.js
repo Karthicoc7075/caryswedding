@@ -2,9 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import cloudinary from '../../lib/cloundinary';
 import multer from "multer";
-import { kv } from '@vercel/kv';
-
-const DATA_FILE = path.join(process.cwd(), "data", "workData.json");
+import { getData,setData } from "@/lib/redis";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -18,8 +16,8 @@ export default async function handler(req, res) {
 
     if (req.method === "GET") {
         try {
-            const data = await fs.readFile(DATA_FILE, "utf-8");
-            const works = JSON.parse(data).works;
+            const data = await getData();
+            const works = data.works;
 
             const activeWorks = works.filter(work => work.status === 'active');
             res.status(200).json({ works: activeWorks });
@@ -68,8 +66,8 @@ export default async function handler(req, res) {
 
             let works = [];
             try {
-                const data = await kv.get(DATA_FILE);
-                works = JSON.parse(data).works || [];
+                const data = await getData();
+                works = data.works || [];
             } catch (error) {
                 works = [];
             }
@@ -88,8 +86,8 @@ export default async function handler(req, res) {
             const { id, title, description, status ,deleteImages} = req.body;
             let works = [];
        
-            const data = await kv.get(DATA_FILE);
-            works = JSON.parse(data).works || [];
+            const data = await getData();
+            works = data.works || [];
             
             const workIndex = works.findIndex((work) => work.id === parseInt(id));
             if (workIndex === -1) {
@@ -154,7 +152,7 @@ export default async function handler(req, res) {
             works[workIndex].description = description;
             works[workIndex].status = status;
 
-            await kv.set(DATA_FILE, JSON.stringify({ works }, null, 2));
+            await setData({ works });
             
             res.status(200).json({ message: "Work updated", work: works[workIndex] });
         }
@@ -168,8 +166,8 @@ export default async function handler(req, res) {
     else if (req.method === "DELETE") {
         try {
             const { id } = req.query;
-            const data = await kv.get(DATA_FILE);
-            let works = JSON.parse(data).works || [];
+            const data = await getData();
+            let works = data.works || [];
             
             const imageUrlsToDelete = works
                 .filter((work) => work.id === parseInt(id))
@@ -205,7 +203,7 @@ export default async function handler(req, res) {
             works = works.filter((work) => work.id !== parseInt(id));
 
             // Save the updated works
-            await kv.set(DATA_FILE, JSON.stringify({ works }, null, 2));
+            await setData({ works });
 
             res.status(200).json({ 
                 message: "Work deleted", 

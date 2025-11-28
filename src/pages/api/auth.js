@@ -2,9 +2,7 @@ const jsonwebtoken = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const fs = require('fs');
 const path = require('path');
-import { kv } from '@vercel/kv';
-
-const AUTH_FILE = path.join(process.cwd(), "data", "auth.json"); 
+import { getUsers,setUsers } from '../../lib/redis';
 
 export default async function handler(req, res) {
 
@@ -17,8 +15,8 @@ export default async function handler(req, res) {
         }
 
         try {
-            const authData = await kv.get(AUTH_FILE);
-            const users = JSON.parse(authData).user;
+            const authData = await getUsers();
+            const users = authData.user;
 
             const findUser = users.find(u => u.username == username);
 
@@ -65,8 +63,8 @@ export default async function handler(req, res) {
 
         try {
             
-            const authData = await kv.get(AUTH_FILE);
-            const users = JSON.parse(authData).user;
+            const authData = await getUsers();
+            const users = authData.user;
 
             const user = users.find(u => u.username === username)
             if(!user) {
@@ -83,7 +81,7 @@ export default async function handler(req, res) {
             
             const updatedUsers = users.map(u => u.username === username ? newUserData : u);
 
-            await kv.set(AUTH_FILE, JSON.stringify({ user: updatedUsers }, null, 2));
+            await setUsers({ user: updatedUsers });
 
             res.status(200).json({ message: 'Password updated successfully' });
 
