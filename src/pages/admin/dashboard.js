@@ -19,7 +19,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     async function fetchWorks() {
       try {
-        const response = await fetch('/api/data');
+        const response = await fetch('/api/data?type=all');
         const data = await response.json();
         setWorks(data.works || []);
       } catch (error) {
@@ -83,7 +83,7 @@ try {
     setShowForm(true);
     setEditingWorkId(id);
 
-    const workToEdit = works.find((work) => work.id === id);
+    const workToEdit = works.find((work) => work._id === id);
 
     if (workToEdit) {
       setForm({
@@ -121,7 +121,7 @@ try {
 
       const data = await response.json();
       console.log("Work deleted:", data);
-      setWorks((s) => s.filter((work) => work.id !== id));
+      setWorks((s) => s.filter((work) => work._id !== id));
       setLoader((prev) => ({ ...prev, deleteLoading: false }));   
       
       
@@ -161,7 +161,7 @@ try {
       }
       const data = await res;
       console.log("Work updated:", data.work);
-      setWorks((s) => s.map((work) => work.id === data.work.id ? data.work : work));
+      setWorks((s) => s.map((work) => work._id === data.work._id ? data.work : work));
       setLoader((prev) => ({ ...prev, editLoading: false }));
       setShowForm(false);
       formReset();
@@ -179,29 +179,48 @@ try {
     setEditingWorkId(null);
     setDeleteImages([]);
   }
+
+
+  
+
+  function handleLogout() {
+    const propmt = confirm("Are you sure you want to logout?");
+    if (!propmt) return;
+
+    localStorage.removeItem('authToken');
+    window.location.reload();
+  }
   return (
     <section className="flex justify-center p-6  min-h-[320px]">
       <div className="w-full max-w-4xl ">
-        <header className="flex flex-row sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold leading-tight">Dashboard</h1>
-          </div>
-    
-          <div className="flex items-center">
-        
-         
-            <button
-              onClick={() => setShowForm(true)}
-              className="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow"
-            >
-              <span className="sr-only">Add</span>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span className="font-medium">Add New Work</span>
-            </button>
-          </div>
-        </header>
+     <header className="flex flex-row sm:items-center justify-between gap-4 mb-6">
+  <div>
+    <h1 className="text-2xl sm:text-3xl font-extrabold leading-tight">Dashboard</h1>
+  </div>
+
+  <div className="flex items-center gap-3">
+    <button
+      onClick={() => setShowForm(true)}
+      className="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow"
+    >
+      <span className="sr-only">Add</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <span className="font-medium">Add New Work</span>
+    </button>
+
+    <button
+      onClick={handleLogout}
+      className="inline-flex items-center gap-2 bg-red-500 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow"
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <span className="font-medium">Logout</span>
+    </button>
+  </div>
+</header>
 
 
         <div className="mb-4">
@@ -214,7 +233,7 @@ try {
               ) : (
             works.map((work) => (
   <div 
-    key={work.id} 
+    key={work._id} 
     className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden"
   >
 
@@ -247,13 +266,13 @@ try {
       <div className="flex gap-3">
         <button 
           className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2.5 rounded-lg transition-colors duration-200 text-sm"
-          onClick={() => editModelShow(work.id)}
+          onClick={() => editModelShow(work._id)}
         >
           Edit
         </button>
         <button 
           className="flex-1 bg-red-500 hover:bg-red-600 text-white font-medium px-4 py-2.5 rounded-lg transition-colors duration-200 text-sm"
-          onClick={() => deleteWork(work.id)}
+          onClick={() => deleteWork(work._id)}
         >
           Delete
         </button>
@@ -319,7 +338,7 @@ try {
 
                {
                   images.length > 0 && (
-                    <div className="flex  gap-2 mt-2 overflow-x-auto">
+                    <div className="flex gap-2 mt-2 overflow-x-auto w-full max-w-full">
                       {images.map((img, idx) => (
                         <div key={idx} className="w-20 h-20 relative border rounded-lg overflow-hidden">
                           <img

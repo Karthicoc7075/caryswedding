@@ -1,8 +1,9 @@
 import fs from "fs/promises";
 import path from "path";
 import cloudinary from '../../lib/cloundinary';
+
 import multer from "multer";
-import { getData,setData } from "@/lib/redis";
+import {getData,createData,updateData,deleteData, getDataById} from '../../db/work'
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -16,10 +17,19 @@ export default async function handler(req, res) {
 
     if (req.method === "GET") {
         try {
-            const data = await getData();
-            const works = data.works;
+            const {type} = req.query;
 
-            const activeWorks = works.filter(work => work.status === 'active');
+           console.log("Requested type:", type);
+            const works = await getData();
+            let activeWorks;
+            
+            if(type=="all") {
+                activeWorks = works
+                
+            } else {
+               activeWorks = works.filter(work => work.status === 'active');
+            }
+
             res.status(200).json({ works: activeWorks });
         } catch (error) {
             console.error("Error reading data:", error);
@@ -56,24 +66,7 @@ export default async function handler(req, res) {
  
             const imageUrls = await Promise.all(uploadPromises);
 
-            const newWork = {
-                id: Date.now(),
-                title,
-                description,
-                status,
-                images: imageUrls,
-            };
-
-            let works = [];
-            try {
-                const data = await getData();
-                works = data.works || [];
-            } catch (error) {
-                works = [];
-            }
-
-            works.push(newWork);
-            await kv.set(DATA_FILE, JSON.stringify({ works }, null, 2));
+            const newWork = await createData({ title, description, status, images: imageUrls });
 
             res.status(201).json({ message: "Work added", work: newWork });
         } catch (error) {
@@ -84,20 +77,19 @@ export default async function handler(req, res) {
     else    if(req.method === "PUT") {
         try {
             const { id, title, description, status ,deleteImages} = req.body;
-            let works = [];
+           
        
-            const data = await getData();
-            works = data.works || [];
-            
-            const workIndex = works.findIndex((work) => work.id === parseInt(id));
-            if (workIndex === -1) {
-                return res.status(404).json({ error: "Work not found" });
-            }
-
+            const findData = await getDataById(id);
+  let imagesToDelete = [];
             console.log("Delete images received:", deleteImages);
-            if (deleteImages && Array.isArray(deleteImages)) {
-
-                const deletePromises = deleteImages.map(async (url) => {
+            if (deleteImages) {
+              
+                if (Array.isArray(deleteImages)) {
+                    imagesToDelete = deleteImages;     // already an array
+                    } else {
+        imagesToDelete = [deleteImages];   // make it an array
+                }
+                const deletePromises = imagesToDelete.map(async (url) => {
                     try {
                         const decodedUrl = decodeURIComponent(url);
                         const filename = decodedUrl.split('/').pop().split('.')[0];
@@ -115,9 +107,10 @@ export default async function handler(req, res) {
                     }
                 });
 
-                works[workIndex].images = works[workIndex].images.filter(
-                    (imgUrl) => !deleteImages.includes(imgUrl)
-                );
+                findData.images = findData.images.filter(img => !deleteImages.includes(img));
+
+                const deleteResults = await Promise.all(deletePromises);
+                console.log("Image delete results:", deleteResults);
             }
 
 
@@ -144,17 +137,18 @@ export default async function handler(req, res) {
             );
 
              const newImageUrls = await Promise.all(uploadPromises);
-            works[workIndex].images.push(...newImageUrls);
+                findData.images.push(...newImageUrls);
         }
            
 
-            works[workIndex].title = title;
-            works[workIndex].description = description;
-            works[workIndex].status = status;
+            findData.title = title;
+            findData.description = description;
+            findData.status = status;
 
-            await setData({ works });
+
+            await updateData({ id, title: findData.title, description: findData.description, status: findData.status, images: findData.images });
             
-            res.status(200).json({ message: "Work updated", work: works[workIndex] });
+            res.status(200).json({ message: "Work updated", work: findData });
         }
 
         catch (error) {
@@ -166,16 +160,10 @@ export default async function handler(req, res) {
     else if (req.method === "DELETE") {
         try {
             const { id } = req.query;
-            const data = await getData();
-            let works = data.works || [];
             
-            const imageUrlsToDelete = works
-                .filter((work) => work.id === parseInt(id))
-                .flatMap((work) => work.images);
+           const findData= await getDataById(id);
 
-            console.log("Image URLs to delete:", imageUrlsToDelete);
-
-            const deletePromises = imageUrlsToDelete.map(async (url) => {
+            const deletePromises = findData.images.map(async (url) => {
                 try {
                     const decodedUrl = decodeURIComponent(url);
                     const filename = decodedUrl.split('/').pop().split('.')[0];
@@ -200,10 +188,7 @@ export default async function handler(req, res) {
             console.log("All delete results:", deleteResults);
        
          
-            works = works.filter((work) => work.id !== parseInt(id));
-
-            // Save the updated works
-            await setData({ works });
+            await deleteData({ id });
 
             res.status(200).json({ 
                 message: "Work deleted", 

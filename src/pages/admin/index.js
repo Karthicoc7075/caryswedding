@@ -1,28 +1,31 @@
 import React, { useEffect, useState } from 'react'
 import LoginPage from './login'
 import AdminDashboard from './dashboard'
-import { useJwt } from 'react-jwt';
+import { jwtDecode } from "jwt-decode";
 
 function Index() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authToken, setAuthToken] = useState(null);
-  const { isExpired } = useJwt(authToken);
+
 
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     setAuthToken(token);
   }, []);
 
+
   useEffect(() => {
     if (authToken) {
       try {
-        // isExpired is a boolean, not a timestamp
-        if (!isExpired) {
+        const decoded = jwtDecode(authToken);
+        const currentTime = Date.now() / 1000; 
+        if (decoded.exp && decoded.exp > currentTime) {
           setIsAuthenticated(true);
         } else {
           setIsAuthenticated(false);
-          localStorage.removeItem('authToken'); // Clean up expired token
+          localStorage.removeItem('authToken');
         }
+
       } catch (error) {
         console.error('Error decoding JWT:', error);
         setIsAuthenticated(false);
@@ -30,7 +33,7 @@ function Index() {
     } else {
       setIsAuthenticated(false);
     }
-  }, [authToken, isExpired]); // Add isExpired to dependencies
+  }, [authToken]); // Add isExpired to dependencies
 
   if (!isAuthenticated) {
     return <LoginPage setAuthToken={setAuthToken} setIsAuthenticated={setIsAuthenticated} />;
